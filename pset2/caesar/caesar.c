@@ -8,7 +8,6 @@ int errorMessage(int);
 
 int main(int argc, string argv[])
 {
-
     //check for the proper number of arguments
     if (argc != 2)
     {
@@ -28,7 +27,6 @@ int main(int argc, string argv[])
 
     //set string (that contains only digits) to int key
     int key = atoi(argv[1]);
-
 
     //make sure key is non-negative
     if (key < 0)
@@ -50,7 +48,6 @@ int main(int argc, string argv[])
         //operate only on lower or uppercase letters
         if (isalpha(p))
         {
-
             if (islower(p))
             {
                 //get alpha index of lower case then add to ascii value 'A'
@@ -76,7 +73,6 @@ int main(int argc, string argv[])
 
     return 0;
 }
-
 
 //return error message depending on input code
 int errorMessage(int code)

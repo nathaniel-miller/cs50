@@ -38,7 +38,6 @@ int main(int argc, string argv[])
     //iterate through plaintext
     for (int i = 0, inputLength = strlen(plaintext); i < inputLength; i++)
     {
-
         //get key from keyword and translate to alphaindex
         int key = toupper(keyword[j]);
         int k = key - 65;
@@ -50,7 +49,6 @@ int main(int argc, string argv[])
         //operate only on lower or uppercase letters
         if (isalpha(p))
         {
-
             if (islower(p))
             {
                 //get alpha index of lower case then add to ascii value 'A'
@@ -119,7 +117,6 @@ bool validKeyword(string keyword)
 
     return true;
 }
-
 
 //return error message depending on input code
 int errorMessage(int code)
