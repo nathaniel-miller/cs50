@@ -41,7 +41,6 @@ int main (void)
 }
 
 bool isValid (long cc, int l)
-
 {
     //returns true if summarized number has a zero as its last digit.
     int value = summarize(cc, l);
@@ -52,7 +51,6 @@ int summarize (long cc, int l)
 {
     int sum1 = 0;
     int sum2 = 0;
-
 
     for (int i = 1; i <= l; i++)
     {
@@ -95,7 +93,6 @@ int ccLength (long cc)
 
     return digits;
 }
-
 
 int sumDigits (int n)
 {
