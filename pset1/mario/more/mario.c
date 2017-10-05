@@ -9,10 +9,8 @@ int main(void)
     do
     {
         input = get_int("Integer from 0 to 23: ");
-
     }
     while (input < 0 || input > 23);
-
 
     for (int i = 0; i < input; i++)
     {
