@@ -40,7 +40,6 @@ int main (void)
     return 0;
 }
 
-
 bool isValid (long cc, int l)
 
 {
@@ -49,46 +48,39 @@ bool isValid (long cc, int l)
     return value % 10 == 0;
 }
 
-
-
-
 int summarize (long cc, int l)
 {
-    //the summarize function starts at the end of the number
-    //it sums the digets of the odd intervals
-    //it doubles the even interval digits and then sums those
-    //if the one of the doubled digits becomes a double digit interger
-    //ex 7 => 14, the 14 is broken into two integers and summed (1 + 4 = 5);
-    //the two sums are then added and returned.
-
     int sum1 = 0;
     int sum2 = 0;
 
 
     for (int i = 1; i <= l; i++)
     {
-
+        //as long as we still have digits to process
         if (cc > 0)
         {
-            if (i % 2 == 0)
+            if (i % 2 != 0)
             {
-                int a = sumDigits ((cc % 10) * 2);
-                sum2 += a;
+                //get last digit and add to odd sum
+                sum1 += cc % 10;
+                //throw it away
                 cc = cc / 10;
             }
             else
             {
-                sum1 += cc % 10;
+                //get last digit and double it.
+                int a = sumDigits ((cc % 10) * 2);
+                //add to even sum
+                sum2 += a;
+                //throw it away.
                 cc = cc / 10;
             }
         }
     }
 
-
-
+    //add odd sum and even sum
     return sum1 + sum2;
 }
-
 
 int ccLength (long cc)
 {
@@ -118,7 +110,6 @@ int sumDigits (int n)
 
     return sum;
 }
-
 
 int firstTwoDigits (long cc, int l)
 {
