@@ -1,5 +1,7 @@
-// Copies a BMP file
+// Resizes a BMP file from 0.0 to 100.0 x depending on
+// what is specified in the input.
 
+// include needed libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,10 +10,12 @@
 #include <ctype.h>
 #include "bmp.h"
 
+// declare helper functions
 int check_args(int argc, char *argv[]);
 int extras(int in, int out, float resize);
 bool is_float_or_int(char *input);
 
+// main function
 int main (int argc, char *argv[])
 {
     // check input argument validity.
@@ -99,18 +103,15 @@ int main (int argc, char *argv[])
 
     if (abs(out_bi.biHeight) > 0 && out_bi.biWidth > 0)
     {
-
         // iterate over infile's scanlines
         for (int i = 0, biHeight = abs(bi.biHeight); i < biHeight; i++)
         {
-
-            // setup variables for calculating if some lines and pixels need extra pixels
+            // setup variables for calculating if some lines and pixels need an extra write
             int base_resize = floor(f);
             int extra_pixels = extras(bi.biWidth, out_bi.biWidth, f);
             int extra_lines = extras(abs(bi.biHeight), abs(out_bi.biHeight), f);
             int add_extra_pixel_every_n;
             int add_extra_line_every_n;
-
 
             // calculate the gap between pixels / lines that require an extra write.
             if (extra_pixels > 0)
@@ -140,7 +141,7 @@ int main (int argc, char *argv[])
                 }
             }
 
-            // setup tracker for pixels that get are set to get an extra pixel write
+            // setup tracker for pixels that are set to get an extra pixel write
             int next_extra_pixel = 0;
 
             // iterate over pixels in input scanline
@@ -157,7 +158,6 @@ int main (int argc, char *argv[])
                         next_extra_pixel += add_extra_pixel_every_n;
                         extra_pixels--;
                     }
-
                 }
 
                 // pixel buffer
@@ -179,7 +179,6 @@ int main (int argc, char *argv[])
                     resized_line[buffer_index] = triple;
                     buffer_index++;
                 }
-
             }
 
             // calculate how many lines to write - base value or base + extra;
@@ -205,9 +204,7 @@ int main (int argc, char *argv[])
             // skip over padding in input file, if any
             fseek(inptr, padding, SEEK_CUR);
         }
-
     }
-
 
     return 0;
 }
@@ -216,7 +213,6 @@ int extras(int inputWidth, int outputWidth, float resizeValue)
 {
     return outputWidth - (floor(resizeValue) * inputWidth);
 }
-
 
 int check_args(int argc, char *argv[])
 {
@@ -247,7 +243,6 @@ int check_args(int argc, char *argv[])
 
 bool is_float_or_int(char *input)
 {
-
     //check characters to make sure they are either digits or (one) dot.
     bool has_dot = false;
     bool ends_with_dig = false;
@@ -284,5 +279,4 @@ bool is_float_or_int(char *input)
     }
 
     return false;
-
 }
