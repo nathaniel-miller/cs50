@@ -8,35 +8,20 @@
 #include <ctype.h>
 #include "bmp.h"
 
-bool isfloat(char *);
-int every_nth_pixel (char *);
+int check_args(int argc, char *argv[]);
+int extras(int in, int out, float resize);
+bool is_float_or_int(char *input);
 
-int main(int argc, char *argv[])
+int main (int argc, char *argv[])
 {
-    // ensure proper usage
-    if (argc != 4)
+    // check input argument validity.
+    if (check_args(argc, argv) == 1)
     {
-        fprintf(stderr, "error - Usage: ./resize float(0.0, 100.0) infile outfile\n");
         return 1;
     }
 
-    // ensure first agrument is a float
-    if ( !isfloat(argv[1]))
-    {
-        fprintf(stderr, "%s is not a valid input. Please enter a float between 0.0 and 100.0.\n", argv[1]);
-        return 1;
-    }
-
-    // ensure first argument is within range of 0.0 - 100.0
+    // remember args
     float f = atof(argv[1]);
-    if (f > 100.0)
-    {
-        fprintf(stderr, "%f is too large. Range must be from 0.0 to 100.0.\n", f);
-        return 1;
-    }
-
-
-    // remember arguments
     char *infile = argv[2];
     char *outfile = argv[3];
 
@@ -56,8 +41,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Could not create %s.\n", outfile);
         return 3;
     }
-
-
 
     // read infile's BITMAPFILEHEADER
     BITMAPFILEHEADER bf;
@@ -83,13 +66,13 @@ int main(int argc, char *argv[])
 
     // resize biWidth according to input
     out_bi.biWidth = bi.biWidth * f;
-    fprintf(stderr, "Width Original: %i\n", bi.biWidth);
-    fprintf(stderr, "Width Resized: %i\n", out_bi.biWidth);
+    printf("Width Original: %i\n", bi.biWidth);
+    printf("Width Resized: %i\n", out_bi.biWidth);
 
     // resize biHeight according to input
     out_bi.biHeight = bi.biHeight * f;
-    fprintf(stderr, "Height Original: %i\n", bi.biHeight);
-    fprintf(stderr, "Height Resized: %i\n", out_bi.biHeight);
+    printf("Height Original: %i\n", bi.biHeight);
+    printf("Height Resized: %i\n", out_bi.biHeight);
 
     // determine padding for scanlines
     int padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
@@ -97,14 +80,13 @@ int main(int argc, char *argv[])
 
     // resize biSizeImage according to input
     out_bi.biSizeImage = ((sizeof(RGBTRIPLE) * out_bi.biWidth) + out_padding) * abs(out_bi.biHeight);
-    fprintf(stderr, "BiSizeImage Original: %i\n", bi.biSizeImage);
-    fprintf(stderr, "BiSizeImage Resized: %i\n", out_bi.biSizeImage);
+    printf("BiSizeImage Original: %i\n", bi.biSizeImage);
+    printf("BiSizeImage Resized: %i\n", out_bi.biSizeImage);
 
     // resize bf.bfsize
     out_bf.bfSize = out_bi.biSizeImage + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-    fprintf(stderr, "bfSize Original: %i\n", bf.bfSize);
-    fprintf(stderr, "bfSize Resized: %i\n", out_bf.bfSize);
-
+    printf("bfSize Original: %i\n", bf.bfSize);
+    printf("bfSize Resized: %i\n", out_bf.bfSize);
 
     // write outfile's BITMAPFILEHEADER
     fwrite(&out_bf, sizeof(BITMAPFILEHEADER), 1, outptr);
@@ -112,89 +94,158 @@ int main(int argc, char *argv[])
     // write outfile's BITMAPINFOHEADER
     fwrite(&out_bi, sizeof(BITMAPINFOHEADER), 1, outptr);
 
-    // every_nth_pixel to get an 'extra' pixel due to decimals
-    int nth = every_nth_pixel(argv[1]);
-    int counter_til_extra_pixel = 0;
-    int counter_til_extra_line = 0;
-    int resize = floor(atof(argv[1]));
-    int resize_pixels = resize;
-    int resize_lines = resize;
+    // setup line tracker to keep track of which lines are set to recieve an extra line write
+    int next_extra_line = 0;
 
-
-    // iterate over infile's scanlines
-    for (int i = 0, biHeight = abs(bi.biHeight); i < biHeight; i++)
+    if (abs(out_bi.biHeight) > 0 && out_bi.biWidth > 0)
     {
-        // add one to pixel resize count if current pixel falls an 'extra pixel mode'.
-        // then, reset counter. Else decrement counter.
-        if (counter_til_extra_line == 0 && nth != 0){
-            resize_lines += 1;
-            counter_til_extra_line = nth - 1;
-        }
-        else
-        {
-            counter_til_extra_line--;
-        }
 
-        for (int l = 0; l < resize_lines; l++)
+        // iterate over infile's scanlines
+        for (int i = 0, biHeight = abs(bi.biHeight); i < biHeight; i++)
         {
-            // iterate over pixels in scanline
-            for (int j = 0; j < bi.biWidth; j++)
+
+            // setup variables for calculating if some lines and pixels need extra pixels
+            int base_resize = floor(f);
+            int extra_pixels = extras(bi.biWidth, out_bi.biWidth, f);
+            int extra_lines = extras(abs(bi.biHeight), abs(out_bi.biHeight), f);
+            int add_extra_pixel_every_n;
+            int add_extra_line_every_n;
+
+
+            // calculate the gap between pixels / lines that require an extra write.
+            if (extra_pixels > 0)
             {
-                // temporary storage
+                add_extra_pixel_every_n = floor(bi.biWidth / extra_pixels);
+            }
+
+            if (extra_lines > 0)
+            {
+                add_extra_line_every_n = floor(biHeight / extra_lines);
+            }
+
+            // buffer for resized line
+            RGBTRIPLE resized_line[out_bi.biWidth];
+            int buffer_index = 0;
+
+            //determine if current line should recieve an extra write to output
+            bool needs_extra_line = false;
+
+            if (extra_lines > 0)
+            {
+                if (i == next_extra_line)
+                {
+                    needs_extra_line = true;
+                    next_extra_line += add_extra_line_every_n;
+                    extra_lines--;
+                }
+            }
+
+            // setup tracker for pixels that get are set to get an extra pixel write
+            int next_extra_pixel = 0;
+
+            // iterate over pixels in input scanline
+            for (int k = 0; k < bi.biWidth; k++)
+            {
+                //determine if current pixel should recieve an extra write to output
+                bool needs_extra_pixel = false;
+
+                if (extra_pixels > 0)
+                {
+                    if (k == next_extra_pixel)
+                    {
+                        needs_extra_pixel = true;
+                        next_extra_pixel += add_extra_pixel_every_n;
+                        extra_pixels--;
+                    }
+
+                }
+
+                // pixel buffer
                 RGBTRIPLE triple;
+
+                // calculate how much to resize current pixel - base value or base + extra
+                int output_pixels = base_resize;
+                if (needs_extra_pixel)
+                {
+                    output_pixels++;
+                }
 
                 // read RGB triple from infile
                 fread(&triple, sizeof(RGBTRIPLE), 1, inptr);
 
-
-                // add one to pixel resize count if current pixel falls an 'extra pixel mode'.
-                // then, reset counter. Else decrement counter.
-                if (counter_til_extra_pixel == 0 && nth != 0)
+                for (int l = 0; l < output_pixels; l++)
                 {
-                    resize_pixels += 1;
-                    counter_til_extra_pixel = nth - 1;
+                    // store expanded pixels into line buffer
+                    resized_line[buffer_index] = triple;
+                    buffer_index++;
                 }
-                else
-                {
-                    counter_til_extra_pixel--;
-                }
-
-                // write current RGB triple to outfile n times.
-                for (int k = 0; k < resize_pixels; k++)
-                {
-                    fwrite(&triple, sizeof(RGBTRIPLE), 1, outptr);
-                }
-
 
             }
 
-            // skip over padding, if any
-            fseek(inptr, padding, SEEK_CUR);
-
-            // then add it back (to demonstrate how)
-            for (int m = 0; m < padding; m++)
+            // calculate how many lines to write - base value or base + extra;
+            int output_lines = base_resize;
+            if (needs_extra_line)
             {
-                fputc(0x00, outptr);
+                output_lines++;
             }
+
+            // write line buffer to output file m times
+            for (int m = 0; m < output_lines; m++)
+            {
+                fwrite(resized_line, sizeof(resized_line), 1, outptr);
+
+                // add necessary padding to output file
+                for (int n = 0; n < out_padding; n++)
+                {
+                    char pad = 0x00;
+                    fputc(pad, outptr);
+                }
+            }
+
+            // skip over padding in input file, if any
+            fseek(inptr, padding, SEEK_CUR);
         }
-
-
-
-        // write the same generated scanline to outfile n times
 
     }
 
-    // close infile
-    fclose(inptr);
 
-    // close outfile
-    fclose(outptr);
-
-    // success
     return 0;
 }
 
-bool isfloat(char *input)
+int extras(int inputWidth, int outputWidth, float resizeValue)
+{
+    return outputWidth - (floor(resizeValue) * inputWidth);
+}
+
+
+int check_args(int argc, char *argv[])
+{
+    // ensure proper usage
+    if (argc != 4)
+    {
+        fprintf(stderr, "error - Usage: ./resize float(0.0, 100.0) infile outfile\n");
+        return 1;
+    }
+
+    // ensure first agrument is a float
+    if ( !is_float_or_int(argv[1]))
+    {
+        fprintf(stderr, "%s is not a valid input. Please enter a float between 0.0 and 100.0.\n", argv[1]);
+        return 1;
+    }
+
+    // ensure first argument is within range of 0.0 - 100.0
+    float f = atof(argv[1]);
+    if (f > 100.0 || f == 0)
+    {
+        fprintf(stderr, "%f is out of bounds. Range must be greater than 0.0 and not more than 100.0.\n", f);
+        return 1;
+    }
+
+    return 0;
+}
+
+bool is_float_or_int(char *input)
 {
 
     //check characters to make sure they are either digits or (one) dot.
@@ -223,52 +274,15 @@ bool isfloat(char *input)
         }
     }
 
-    //remaining conditions to be considered a valid float.
+    //remaining conditions to be considered a valid float or integer.
     bool is_a_float = (has_dot && ends_with_dig) ? true : false;
+    bool is_an_integer = (!has_dot && ends_with_dig) ? true : false;
 
-    return is_a_float;
-
-}
-
-int every_nth_pixel (char * f)
-{
-    int counter = 0;
-    bool dot = false;
-    char *decimal = malloc(80);
-
-    //count number of decimal points and extract everything after the decimal point.
-    for (int i = 0; i < strlen(f); i++)
+    if (is_a_float || is_an_integer)
     {
-        if (dot)
-        {
-            decimal[counter] = f[i];
-            counter++;
-        }
-
-        if (f[i] == '.')
-        {
-            dot = true;
-        }
+        return true;
     }
 
-    decimal[counter + 1] = '\0';
+    return false;
 
-    //convert extracted decimal points into an actual float. Free temp storage.
-    float decimal_float = atof(decimal);
-    free(decimal);
-
-    if (decimal_float == 0)
-    {
-        return 0;
-    }
-
-    float ff = 1.0 / decimal_float;
-
-    for (int j = 0; j < counter; j++)
-    {
-        ff *= 10.0;
-    }
-
-
-    return round(ff);
 }
