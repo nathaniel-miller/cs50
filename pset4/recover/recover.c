@@ -32,7 +32,7 @@ int main (int argc, char *argv[])
 
     // open forensic image
     FILE * inptr = fopen(argv[1], "r");
-    // FILE * outptr;
+    FILE * outptr;
 
     // loop through file searching for first '255'
     while (fread(first_byte, sizeof(BYTE), 1, inptr) == 1)
@@ -52,11 +52,11 @@ int main (int argc, char *argv[])
             if (signature_is_present(possible_sig, jpeg_sig))
             {
                 // close previously open write file, if any.
-                // if (write_file_open)
-                // {
-                //     fclose(outptr);
-                //     write_file_open = false;
-                // }
+                if (write_file_open)
+                {
+                    fclose(outptr);
+                    write_file_open = false;
+                }
 
 
                 printf("Signature Found. . .\n");
@@ -64,10 +64,10 @@ int main (int argc, char *argv[])
                 //Increment counter for image signatures found.
                 counter++;
 
-                // // setup name for image file
-                // char file_name[8] = {};
-                // char * zero_padding = z_pad(counter);
-                // snprintf(file_name, 8, "%s%i.jpg\n", zero_padding, counter);
+                // setup name for image file
+                char file_name[8] = {};
+                char * zero_padding = z_pad(counter);
+                snprintf(file_name, 8, "%s%i.jpg\n", zero_padding, counter);
 
                 // move pointer back 4 bytes after checking what they contain
                 fseek(inptr, signature_offset, SEEK_CUR);
@@ -75,29 +75,26 @@ int main (int argc, char *argv[])
                 //read FAT block from forensic image into buffer
                 fread(FAT_block, sizeof(FAT_block), 1, inptr);
 
-                // // open new output file based on current signature
-                // outptr = fopen(file_name, "w");
+                // open new output file based on current signature
+                outptr = fopen(file_name, "w");
                 write_file_open = true;
 
-                // // write FAT block buffer to file
-                // fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
+                // write FAT block buffer to file
+                fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
 
             }
             else // byte is 255 but not part of a signature
             {
                 if (write_file_open)
                 {
-                    // back up one byte
-                    // fseek(inptr, -1, SEEK_CUR);
-
                     // move pointer back 4 bytes after checking what they contain
                     fseek(inptr, signature_offset, SEEK_CUR);
 
                     //read FAT block from forensic image into buffer
                     fread(FAT_block, sizeof(FAT_block), 1, inptr);
 
-                //     // write FAT block buffer to file
-                //     fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
+                    // write FAT block buffer to file
+                    fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
                 }
 
             }
@@ -112,8 +109,8 @@ int main (int argc, char *argv[])
                 //read FAT block from forensic image into buffer
                 fread(FAT_block, sizeof(FAT_block), 1, inptr);
 
-            //     // write FAT block buffer to file
-            //     fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
+                // write FAT block buffer to file
+                fwrite(FAT_block, sizeof(FAT_block), 1, outptr);
             }
 
         }
@@ -121,7 +118,7 @@ int main (int argc, char *argv[])
 
     // close files
     fclose(inptr);
-    // fclose(outptr);
+    fclose(outptr);
     write_file_open = false;
     printf("Sigs: %i\n", counter);
 
@@ -189,43 +186,3 @@ char * z_pad(int counter)
 
     return "0";
 }
-
-
-// PLAN
-
-// create buffer 512 bits (64 bytes) in size (FAT storage block)
-
-// open forensic image file
-
-  // open loop
-
-      // read 64 bytes into buffer
-
-      // check first 3 bytes
-
-        // if they match jpeg signature
-
-          // check if 4th byte falls within proper range
-
-            // if they do:
-
-                // check if an output file is open (variable is true). // Will be true all the time, except for the first time. Neccessary?
-
-                // if one is open, CLOSE CURRENT OUTPUT FILE! Mark bool variable to false.
-
-                // open new output file (pic_counter) // dynamic string names?
-                // need to set some variable to true - signifying that there is one open.???
-
-                // write buffer to output file
-
-            // if they don't:
-
-                // check if output file is open??
-
-                // write buffer to current output file.
-
-    // close loop
-
-    // close current output file
-
-    // close forensic image file.
